@@ -102,3 +102,29 @@ func SendToSocket(socket string, command string) error {
 	}
 	return nil
 }
+
+// buildLocation produces the location string, if the ingress has redirects
+// (specified through the ingress.kubernetes.io/rewrite-to annotation)
+func buildLocation(input interface{}) string {
+	location, ok := input.(*ingress.Location)
+	if !ok {
+		glog.Errorf("expected an '*ingress.Location' type but %T was returned", input)
+		return slash
+	}
+
+	path := location.Path
+	if len(location.Rewrite.Target) > 0 && location.Rewrite.Target != path {
+		if path == slash {
+			return fmt.Sprintf("~* %s", path)
+		}
+		// baseuri regex will parse basename from the given location
+		baseuri := `(?<baseuri>.*)`
+		if !strings.HasSuffix(path, slash) {
+			// Not treat the slash after "location path" as a part of baseuri
+			baseuri = fmt.Sprintf(`\/?%s`, baseuri)
+		}
+		return fmt.Sprintf(`~* ^%s%s`, path, baseuri)
+	}
+
+	return path
+}

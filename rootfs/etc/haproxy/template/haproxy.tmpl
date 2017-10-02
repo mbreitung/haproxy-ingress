@@ -131,6 +131,15 @@ frontend httpfront
 {{ if ne $appRoot "" }}
     redirect location {{ $appRoot }} if ishost-{{ $server.HostnameLabel }} { path / }
 {{ end }}
+{{ $rewriteTarget := $server.RootLocation.Rewrite.Target }}
+{{ if ne $rewriteTarget "" }}
+{{ range $location := $server.Locations }}
+{{ $path := buildLocation $location }}
+    acl {{ $location.Backend }}_rewrite path_beg -i {{ $path }}
+    http-request set-path {{ $rewriteTarget }} if {{ $location.Backend }}_rewrite
+    use_backend {{ $location.Backend }} if {{ $location.Backend }}_rewrite
+{{ end }}
+{{ end }}
 {{ end }}
 {{ end }}
 {{ if and $hasHTTPStoHTTP $cfg.HSTS }}
@@ -284,11 +293,23 @@ frontend httpsfront-{{ $host }}
 {{ if ne $appRoot "" }}
     redirect location {{ $appRoot }} if { path / }
 {{ end }}
+
 {{ range $location := $server.Locations }}
 {{ if ne $location.Proxy.BodySize "" }}
     use_backend error413 if { path_beg {{ $location.Path }} } { req.body_size gt {{ sizeSuffix $location.Proxy.BodySize }} }
 {{ end }}
 {{ end }}
+
+{{ $rewriteTarget := $server.RootLocation.Rewrite.Target }}
+{{ if ne $rewriteTarget "" }}
+{{ range $location := $server.Locations }}
+{{ $path := buildLocation $location }}
+    acl {{ $location.Backend }}_rewrite path_beg -i {{ $path }}
+    http-request set-path {{ $rewriteTarget }} if {{ $location.Backend }}_rewrite
+    use_backend {{ $location.Backend }} if {{ $location.Backend }}_rewrite
+{{ end }}
+{{ end }}
+
 {{ range $location := $server.Locations }}
 {{ if not $location.IsRootLocation }}
     use_backend {{ $location.Backend }} if { path_beg {{ $location.Path }} }
