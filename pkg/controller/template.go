@@ -64,6 +64,13 @@ var funcMap = gotemplate.FuncMap{
 		}
 		return strconv.FormatInt(value, 10)
 	},
+	"backendHash": func(input interface{}) string {
+		if endpoint, ok := input.(string); ok {
+			return utils.BackendHash(endpoint)
+		}
+		glog.Error("invalid type conversion on backendHash template function")
+		return ""
+	},
 }
 
 func newTemplate(name string, file string) *template {
